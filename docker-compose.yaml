@@ -1,0 +1,58 @@
+services:
+  db:
+    image: mysql:5.7
+    platform: linux/x86_64
+    ports:
+      - "33099:3306"
+    container_name: mysql-bazil-schoolproject
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: bazil-schoolproject_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: securepassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db.sql:/docker-entrypoint-initdb.d/db-init.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-backend-bazil-schoolproject
+    restart: unless-stopped
+    tty: true
+    environment:
+      APP_ENV: local
+      APP_KEY:
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8099
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: bazil-schoolproject_db
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: securepassword
+    volumes:
+      - ./bazil-schoolproject_storage:/var/www/html
+      - ./logs/php.log:/var/log/fpm-php.www.log
+    ports:
+      - "8099:8099"
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  db_data:
+
+networks:
+  app-network:
+    driver: bridge
